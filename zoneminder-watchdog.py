@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(description='Watch zoneminder camera connection
 parser.add_argument('--url',type=str,default='http://127.0.0.1/zm/',required=False,help='Zoneminder URL')
 parser.add_argument('--username',type=str,default='admin',required=False,help='Username')
 parser.add_argument('--password',type=str,default='admin',required=False,help='Password')
-parser.add_argument('--interval',type=int,default=900,required=False,help='Interval seconds')
+parser.add_argument('--interval',type=int,default=300,required=False,help='Interval seconds')
 args = parser.parse_args()
 
 if args.url.endswith('/'): args.url=args.url[:-1]
