@@ -1,0 +1,15 @@
+[Unit]
+Description=Zoneminder Watchdog
+After=zoneminder.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/zoneminder-watchdog.cfg
+WorkingDirectory=/tmp
+ExecStart=/usr/bin/python3 /usr/sbin/zoneminder-watchdog.py --url=${URL} --username=${USERNAME} --password=${PASSWORD} --interval=${INTERVAL}
+KillMode=process
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
