@@ -22,7 +22,7 @@ logging.basicConfig(
 log = logging.getLogger("zoneminder")
 import urllib3
 urllib3.disable_warnings()
-logging.getLogger("requests.packages.urllib3.connectionpool").setLevel(logging.WARNING)
+logging.getLogger("requests.packages.urllib3.connectionpool").setLevel(logging.ERROR)
 
 DATA_FILE = 'zoneminder.pickle'
 
@@ -45,11 +45,15 @@ url = Config({
     'edit':'{url}/api/monitors/{monId}.json'.format(url=args.url,monId='{monId}')
 })
 
-def restart(s, monId):
-    r = s.put(url.edit.format(monId=monId), data={'Monitor[Enabled]':'0'}, verify=False)
-    if r.status_code != 200: raise Exception('Could not log into {url} response code {code:d}'.format(url=url.login,code=r.status_code))
-    r = s.put(url.edit.format(monId=monId), data={'Monitor[Enabled]':'1'}, verify=False)
-    if r.status_code != 200: raise Exception('Could not log into {url} response code {code:d}'.format(url=url.login,code=r.status_code))
+def restart(s, monId, enabled):
+    enabled = int(enabled)
+    enabled = (enabled+1)%2
+    r = s.put(url.edit.format(monId=monId), data={'Monitor[Enabled]':enabled}, verify=False)
+    if r.status_code != 200: raise Exception('Could not set {monId} to Enabled:{enabled:d}'.format(monId=monId,enabled=enabled))
+    time.sleep(1)
+    enabled = (enabled+1)%2
+    r = s.put(url.edit.format(monId=monId), data={'Monitor[Enabled]':enabled}, verify=False)
+    if r.status_code != 200: raise Exception('Could not set {monId} to Enabled:{enabled:d}'.format(monId=monId,enabled=enabled))
 
 log.info('Started zoneminder-watchdog.')
 
@@ -84,7 +88,7 @@ while True:
                 }, verify=False)
                 if r.status_code != 200:
                     log.warn('monId:{monId} requires restarting response code {code:d}'.format(monId=monId,code=r.status_code))
-                    restart(s,monId)
+                    restart(s,monId,mon.get('Enabled','1'))
                 else:
                     try:
                         img = Image.open(BytesIO(r.content))
@@ -94,15 +98,15 @@ while True:
                         isblack = img.convert("L").getextrema() == (0, 0)
                         if issame:
                             log.info('monId:{monId} requires restarting error:{error}'.format(monId=monId,error='image is exact same as before, no update'))
-                            restart(s,monId)
+                            restart(s,monId,mon.get('Enabled','1'))
                         elif isblack:
                             log.info('monId:{monId} requires restarting error: {error}'.format(monId=monId,error='image is black, possibly connection lost'))
-                            restart(s,monId)
+                            restart(s,monId,mon.get('Enabled','1'))
                         else:
                             log.info('monId:{monId} check OK ({hash})'.format(monId=monId,hash=h))
                     except Exception as e:
                         log.exception('monId:{monId} requires restarting error:{error}'.format(monId=monId,error=str(e)))
-                        restart(s,monId)
+                        restart(s,monId,mon.get('Enabled','1'))
         with open(DATA_FILE, 'wb') as f:
             pickle.dump(cameras, f)
     except Exception as e:
